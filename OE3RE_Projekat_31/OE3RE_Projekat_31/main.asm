@@ -9,6 +9,7 @@
 
  INCLUDE Irvine32.inc
 
+
  ; TODO: Kaze da ne vidi Irvine32.inc i njegove metode, svejedno ga izvrsava?
 
 .data
