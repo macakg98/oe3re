@@ -14,6 +14,7 @@
 .code
 	main proc
 		; code is here
+		; repo spreman, biblioteka spremna
 	invoke ExitProcess, 0
 	main endp
 end main
