@@ -1,6 +1,6 @@
 ; OE3RE - Projekat 31 - Parsiranje tekstualnog fajla
 ; Matija Saljic
-; Martin Cvijovic picka
+; Martin Cvijovic
 
 .386
 .model flat, stdcall
