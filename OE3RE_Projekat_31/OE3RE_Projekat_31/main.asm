@@ -13,19 +13,26 @@
  BUFFER_SIZE = 100 
 
 .data?
-	fileName BYTE ?
+	fileName byte ?
 	fileHandle dword ?
 	textBuffer byte buffer_size DUP(?); // jedan bafer (jedno ucitavanje se smesta u ovu promenljivu)
 	bytesCnt dword ? ; // koliko bajtova je procitano (broj moze biti promenljiv)
 					 ; // mora da bude uvek konstantan jer se ucitava uvek isti broj promenljivih
-					 ; // sluzi za bacanje greske ukoliko je fajl neispravno napisan
+					 ; // sluzi za bacanje greske ukoliko je fajl neispravno napisaninfoUnsuccessfulRead
+	x0 byte ?
+	y0 byte ?
+	x1 byte ?
+	y1 byte ?
+	color byte ?
 .data
 	infoProgram1 BYTE "Matija Saljic 411/16, Martin Cvijovic 558/17",13,10,0
 	infoProgram2 BYTE "Projekat 31: Parsiranje tekstualnog fajla",13,10,0
-	infoInputFileName BYTE "Unesite ime datoteke: ",13,10,0
-	infoSuccessfulRead BYTE "Datoteka je uspesno otvorena",13,10,0
-	infoUnsuccessfulRead BYTE "Nije moguce otvoriti datoteku",13,10,0
+	infoInputFileName BYTE "Unesite ime datoteke (max 100 karaktera, obavezno dodati ekstenziju .txt na kraj): ",13,10,0
+	infoSuccessfulOpen BYTE "Datoteka je uspesno otvorena",13,10,0
+	infoUnsuccessfulOpen BYTE "Nije moguce otvoriti datoteku, izlazim...",13,10,0
 	infoContent BYTE "Sadrzaj trenutne linije je: ",13,10,0 ; // za debagovanje
+	infoBadLength BYTE "Velicina fajla je veca od dozvoljene! Ucitajte novi fajl! Izlazim...",13,10,0
+	infoUnsuccesfulRead BYTE "Greska u citanju linije fajla!",13,10,0
 .code
 	main proc
 		; // ucitaj ime fajla
@@ -36,18 +43,52 @@
 		mov edx, offset infoInputFileName
 		call WriteString
 
-	READFILENAME:
-		call ReadString
-		jnc READSUCCESSFILENAME
-		jmp READFILENAME
-	
-	READSUCCESSFILENAME:
-		mov fileName, al
+		; // ucitavamo fileName, max 32 karaktera
+
+		mov ecx, BUFFER_SIZE
 		mov edx, offset fileName
+		call ReadString
+
+		mov ecx, 0
+
+		mov edx, offset fileName
+		call OpenInputFile
+
+		.IF (eax == INVALID_HANDLE_VALUE)
+			mov edx, offset infoUnsuccessfulOpen
+			call WriteString
+			jmp FORCEEXIT
+		.ENDIF
+
+		mov edx, offset infoSuccessfulOpen
 		call WriteString
+		
+		mov fileHandle, eax ; // potrebno da bi funkcija za ispis znala gde da ispise
 
-	invoke ExitProcess, 0
+		; // citamo liniju po liniju
+		; // format : x0 y0 x1 y1 color BYTE
 
-	ENDPOINT:
+		mov eax, offset textBuffer
+		mov ecx, BUFFER_SIZE  ; // max 100
+		call ReadFromFile
+
+		mov bytesCnt, eax
+		jnc CHECKSIZE
+		
+		mov edx, offset infoUnsuccesfulRead
+		call WriteString
+		jmp FORCEEXIT
+
+	CHECKSIZE:
+		cmp eax, BUFFER_SIZE
+		jb parseRectData ; // funkcija koja parsira podatke iz linije
+					    ; // i nakon toga poziva funkciju koja crta (odatle Matija preuzima)
+		
+		mov edx, offsset infoBadLength
+		call WriteString
+		jmp FORCEEXIT
+
+	FORCEEXIT:
+		invoke ExitProcess, 0
 	main endp
 end main
