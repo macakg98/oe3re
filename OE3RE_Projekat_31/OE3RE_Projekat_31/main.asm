@@ -73,7 +73,7 @@
 
 		; // citamo liniju po liniju
 		; // format : x0 y0 x1 y1 color BYTE
-		; // mnogo prostora za gresku!
+		; // mnogo prostora za gresku :DDDDDDDDd
 
 		mov edx, offset textBuffer
 		mov ecx, BUFFER_SIZE  ; // max 100
@@ -95,7 +95,7 @@
 		call WriteString
 		jmp FORCEEXIT
 
-	PARSERECTDATA:
+m	PARSERECTDATA:
 		; // mov edx, offset infoSuccessfulRead ; // debugging
 		; // call WriteString ; // debugging
 
