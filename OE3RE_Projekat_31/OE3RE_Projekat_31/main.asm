@@ -95,7 +95,7 @@
 		call WriteString
 		jmp FORCEEXIT
 
-m	PARSERECTDATA:
+	PARSERECTDATA:
 		; // mov edx, offset infoSuccessfulRead ; // debugging
 		; // call WriteString ; // debugging
 
