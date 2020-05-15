@@ -31,21 +31,27 @@
 	infoSuccessfulOpen BYTE "Datoteka je uspesno otvorena",13,10,0
 	infoUnsuccessfulOpen BYTE "Nije moguce otvoriti datoteku, izlazim...",13,10,0
 	infoContent BYTE "Sadrzaj trenutne linije je: ",13,10,0 ; // za debagovanje
-	infoBadLength BYTE "Velicina fajla je veca od dozvoljene! Ucitajte novi fajl! Izlazim...",13,10,0
-	infoUnsuccesfulRead BYTE "Greska u citanju linije fajla!",13,10,0
+	infoBadLength BYTE "Velicina fajla je veca od dozvoljene! Ucitajte novi fajl! Izlazim...", 13, 10, 0
+	infoUnsuccesfulRead BYTE "Greska u citanju linije iz fajla!", 13, 10, 0
+	infoSuccessfulRead BYTE "Uspesno procitana linija iz fajla", 13, 10, 0
+	stringEmptyLine BYTE "    ", 13, 10, 0
 .code
 	main proc
 		; // ucitaj ime fajla
 		mov edx, offset infoProgram1
 		call WriteString
+		mov edx, offset stringEmptyLine
+		call WriteString
 		mov edx, offset infoProgram2
+		call WriteString
+		mov edx, offset stringEmptyLine
 		call WriteString
 		mov edx, offset infoInputFileName
 		call WriteString
 
-		; // ucitavamo fileName, max 32 karaktera
+		; // ucitavamo fileName, max 100 karaktera
 
-		mov ecx, BUFFER_SIZE
+		mov ecx, BUFFER_SIZE ; 
 		mov edx, offset fileName
 		call ReadString
 
@@ -54,21 +60,22 @@
 		mov edx, offset fileName
 		call OpenInputFile
 
-		.IF (eax == INVALID_HANDLE_VALUE)
+		.IF (eax == INVALID_HANDLE_VALUE) ; // failed ucitavanje
 			mov edx, offset infoUnsuccessfulOpen
 			call WriteString
-			jmp FORCEEXIT
+			jmp FORCEEXIT ; // izlazim
 		.ENDIF
 
-		mov edx, offset infoSuccessfulOpen
+		mov edx, offset infoSuccessfulOpen ; // uspesno ucitavanje
 		call WriteString
 		
-		mov fileHandle, eax ; // potrebno da bi funkcija za ispis znala gde da ispise
+		mov fileHandle, eax ; // cuvamo filehandle iz eax-a
 
 		; // citamo liniju po liniju
 		; // format : x0 y0 x1 y1 color BYTE
+		; // mnogo prostora za gresku!
 
-		mov eax, offset textBuffer
+		mov edx, offset textBuffer
 		mov ecx, BUFFER_SIZE  ; // max 100
 		call ReadFromFile
 
@@ -81,13 +88,19 @@
 
 	CHECKSIZE:
 		cmp eax, BUFFER_SIZE
-		jb parseRectData ; // funkcija koja parsira podatke iz linije
-					    ; // i nakon toga poziva funkciju koja crta (odatle Matija preuzima)
+		jb PARSERECTDATA ; // potprogram koji parsira liniju i zove drawRect(matijin deo)
+						 ; // skacemo na njega ukoliko je procitana linija u dozvoljenim granicama
 		
-		mov edx, offsset infoBadLength
+		mov edx, offset infoBadLength
 		call WriteString
 		jmp FORCEEXIT
 
+	PARSERECTDATA:
+		; // mov edx, offset infoSuccessfulRead ; // debugging
+		; // call WriteString ; // debugging
+
+
+		
 	FORCEEXIT:
 		invoke ExitProcess, 0
 	main endp
