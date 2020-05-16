@@ -18,12 +18,14 @@
 	textBuffer byte buffer_size DUP(?); // jedan bafer (jedno ucitavanje se smesta u ovu promenljivu)
 	bytesCnt dword ? ; // koliko bajtova je procitano (broj moze biti promenljiv)
 					 ; // mora da bude uvek konstantan jer se ucitava uvek isti broj promenljivih
-					 ; // sluzi za bacanje greske ukoliko je fajl neispravno napisaninfoUnsuccessfulRead
+					 ; // sluzi za bacanje greske ukoliko je fajl neispravno napisan
 	x0 byte ?
 	y0 byte ?
 	x1 byte ?
 	y1 byte ?
 	color byte ?
+
+	tempByte byte ?
 .data
 	infoProgram1 BYTE "Matija Saljic 411/16, Martin Cvijovic 558/17",13,10,0
 	infoProgram2 BYTE "Projekat 31: Parsiranje tekstualnog fajla",13,10,0
@@ -81,6 +83,7 @@
 
 		mov bytesCnt, eax
 		jnc CHECKSIZE
+		jz FORCEEXIT ; // kad stignemo do EOF-a zavrsavamo
 		
 		mov edx, offset infoUnsuccesfulRead
 		call WriteString
@@ -97,8 +100,16 @@
 
 	PARSERECTDATA:
 		; // mov edx, offset infoSuccessfulRead ; // debugging
-		; // call WriteString ; // debugging
+		; // call WriteString ; // 
+		; // ucitali smo jednu liniju, obradjujemo i zovemo opet dok ne dobijem
+		
+		mov eax, 0
+		mov ecx, 0
 
+		mov tempByte, 0
+
+		; // x0 y0 x1 y1 color
+		; // svi su byte = 8bit, registri su 16bitni
 
 		
 	FORCEEXIT:
