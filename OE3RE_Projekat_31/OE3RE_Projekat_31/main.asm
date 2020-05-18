@@ -1,6 +1,6 @@
-; OE3RE - Projekat 31 - Parsiranje tekstualnog fajla
-; Matija Saljic
-; Martin Cvijovic
+; // OE3RE - Projekat 31 - Parsiranje tekstualnog fajla
+; // Matija Saljic
+; // Martin Cvijovic
 
 .386
 .model flat, stdcall
@@ -9,16 +9,14 @@
 
  INCLUDE Irvine32.inc
 
- ; // maksimalna velicina jednog bafera u B
- BUFFER_SIZE = 100 
+ BUFFER_SIZE = 100 ; // konstantan maksimalan broj karaktera u fajlu
 
 .data?
 	fileName byte ?
 	fileHandle dword ?
-	textBuffer byte buffer_size DUP(?); // jedan bafer (jedno ucitavanje se smesta u ovu promenljivu)
+	textBuffer byte buffer_size DUP(?); // ceo fajl ide u ovu promenljivu
 	bytesCnt dword ? ; // koliko bajtova je procitano (broj moze biti promenljiv)
-					 ; // mora da bude uvek konstantan jer se ucitava uvek isti broj promenljivih
-					 ; // sluzi za bacanje greske ukoliko je fajl neispravno napisan
+
 	x0 dword ?
 	y0 dword ?
 	x1 dword ?
@@ -32,7 +30,7 @@
 	infoInputFileName BYTE "Unesite ime datoteke (max 100 karaktera, obavezno dodati ekstenziju .txt na kraj): ",13,10,0
 	infoSuccessfulOpen BYTE "Datoteka je uspesno otvorena",13,10,0
 	infoUnsuccessfulOpen BYTE "Nije moguce otvoriti datoteku, izlazim...",13,10,0
-	infoContent BYTE "Sadrzaj trenutne linije je: ",13,10,0 ; // za debagovanje
+	; // infoContent BYTE "Sadrzaj trenutne linije je: ",13,10,0 ; // za debagovanje
 	infoBadLength BYTE "Velicina fajla je veca od dozvoljene! Ucitajte novi fajl! Izlazim...", 13, 10, 0
 	infoUnsuccesfulRead BYTE "Greska u citanju linije iz fajla!", 13, 10, 0
 	infoSuccessfulRead BYTE "Uspesno procitana linija iz fajla", 13, 10, 0
@@ -40,31 +38,7 @@
 .code
 	drawRect proc
 		; // matija ovde izvodis svoje magije, ako ima nesto ovde onda sam to uneo za debagovanje
-		mov ebx, 10 ; // osnova u kojoj stampamo broj mora biti upisana u EBX
-		mov eax, x0
-		call WriteInt
-		mov edx, offset stringEmptyLine
-		call WriteString
-
-		mov eax, y0
-		call WriteInt
-		mov edx, offset stringEmptyLine
-		call WriteString
-				
-		mov eax, x1
-		call WriteInt
-		mov edx, offset stringEmptyLine
-		call WriteString
-					
-		mov eax, y1
-		call WriteInt
-		mov edx, offset stringEmptyLine
-		call WriteString
-
-		mov eax, color
-		call WriteInt
-		mov edx, offset stringEmptyLine
-		call WriteString
+		
 
 		ret
 	drawRect endp
@@ -93,11 +67,8 @@
 		mov edx, offset fileName
 		call OpenInputFile
 
-		.IF (eax == INVALID_HANDLE_VALUE) ; // failed ucitavanje
-			mov edx, offset infoUnsuccessfulOpen
-			call WriteString
-			jmp FORCEEXIT ; // izlazim
-		.ENDIF
+		cmp eax, INVALID_HANDLE_VALUE ; // neuspesno otvaranje fajla (ne postoji, itd)
+		je UNABLETOOPENFILE	
 
 		mov edx, offset infoSuccessfulOpen ; // uspesno ucitavanje
 		call WriteString
@@ -112,12 +83,12 @@
 		mov ecx, BUFFER_SIZE  ; // max 100
 		call ReadFromFile
 
-		mov edx, offset textBuffer
-		call WriteString
+		; // mov edx, offset textBuffer
+		; // call WriteString
 
 		mov bytesCnt, eax
-		jnc CHECKSIZE
-		jz FORCEEXIT ; // kad stignemo do EOF-a zavrsavamo
+		jnc CHECKSIZE ; // stavlja carry na 1 ako ne procita kako treba
+		jz FORCEEXIT ; // mislim da ova linija ne radi nista
 		
 		mov edx, offset infoUnsuccesfulRead
 		call WriteString
@@ -125,8 +96,8 @@
 
 	CHECKSIZE:
 		cmp eax, BUFFER_SIZE
-		jb PARSERECTDATA ; // potprogram koji parsira liniju i zove drawRect(matijin deo)
-						 ; // skacemo na njega ukoliko je procitana linija u dozvoljenim granicama
+		jb PARSERECTDATA ; // potprogram koji parsira fajl i zove drawRect(matijin deo)
+						 ; // skacemo na njega ukoliko je procitan fajl u dozvoljenim granicama
 		
 		mov edx, offset infoBadLength
 		call WriteString
@@ -145,7 +116,6 @@
 		           ; // 0 -> x0, 1 -> y0, 2 -> x1, 3 -> y1, 4 -> color (0-255)
 				   ; // citamo u eax, pomocu ecx znamo gde ga store-ujemo
 
-
 		mov esi, offset textBuffer
 
 	LINELOOP:
@@ -154,27 +124,34 @@
 
 		; //sub tempByte, 48
 
-		cmp tempByte, 0
-		je FORCEEXIT
+		cmp tempByte, 0    ; // 0 = nismo procitali nista (u principu EOF),
+		je ASSIGNLASTCOLOR ; // ako smo stigli do kraja ostala je jos jedna boja da se assign-uje,
+						   ; // potrebna je jos jedna procedura koja je jako slicna obicnom
+						   ; // assignColor-u, jedina razlika je sto kad se izvrsi
+						   ; // zove FORCEEXIT a ne nastavlja dalje sa LINELOOP
 
-		cmp tempByte, '\'
-		je NEWLINE
+		cmp tempByte, 10 ; // 10 = nova linija (\n)
+		je NEWLINE       ; // nismo procitali nista, samim tim ne smemo povecavati ecx registar
+						 ; // inace cemo preskociti jednu promenljivu, new line smanjuje ecx za 1
+						 ; // koji zatim zove NEXT koji povecava ecx za 1 i samim tim za novi 
+						 ; // LINELOOP ecx ce ostati nepromenjen
 
 		cmp tempByte, '0'
 		jl VARCHECK
 		cmp tempByte, '9'
 		jg VARCHECK
 
-		sub tempByte, 48
+		sub tempByte, 48 ; // ovo je char, oduzimamo mu ascii vrednost '0' koja je 48
+						 ; // da bismo dobili int vrednost
 		imul eax, 10
-		add al, tempByte
+		add al, tempByte ; // al = 8 nizih bitova eax-a (tempByte nam je bajt = 8bit)
 
 		inc esi
 		jmp LINELOOP
-	
-	NEWLINE: ; // ?
-		inc esi
-		jmp VARCHECK
+
+	NEWLINE:
+		dec ecx
+		jmp NEXT
 
 	VARCHECK:
 		cmp ecx, 0
@@ -188,9 +165,7 @@
 		cmp ecx, 4
 		je ASSIGNCOLOR 
 
-		; // do ovde ne treba da se stigne?
-
-
+		; // do ovde ne treba da se stigne, ecx ce uvek biti u invervalu [0,4]
 	ASSIGNX0:
 		mov x0, eax
 		jmp NEXT
@@ -221,6 +196,23 @@
 		jmp LINELOOP
 		; // x0 y0 x1 y1 color
 		; // svi su byte = 8bit, registri su 16bitni
+
+	UNABLETOOPENFILE:
+		mov edx, offset infoUnsuccessfulOpen
+		call WriteString
+		jmp FORCEEXIT
+
+	ASSIGNLASTCOLOR:
+		mov color, eax
+		call drawRect
+		mov ecx, 0
+		mov eax, 0
+		mov tempByte, 0
+
+		call ReadChar ; // cekamo akciju korisnika da zavrsimo program
+		mov eax, fileHandle
+		call CloseFile
+		jmp FORCEEXIT
 
 	FORCEEXIT:
 		invoke ExitProcess, 0
