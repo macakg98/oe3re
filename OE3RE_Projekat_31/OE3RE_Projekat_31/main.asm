@@ -39,6 +39,18 @@
 	drawRect proc
 		; // matija ovde izvodis svoje magije, ako ima nesto ovde onda sam to uneo za debagovanje
 		
+		//nisam siguran da li treba da se isprazne korisceni registri, stavljam pod komentar za svaki slucaj
+		// mov EAX, 0 
+		// mov EBX, 0
+		// mov ECX, 0
+		// mov EDX, 0
+
+		//cistimo ekran tojest konzolu
+		call Clrscr
+
+		//podesavamo kursor koji koristimo za crtanje
+		INVOKE GetStdHandle, STD_OUTPUT_HANDLE
+
 
 		ret
 	drawRect endp
