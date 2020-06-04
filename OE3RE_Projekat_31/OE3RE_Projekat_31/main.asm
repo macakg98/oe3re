@@ -16,14 +16,19 @@
 	fileHandle dword ?
 	textBuffer byte buffer_size DUP(?); // ceo fajl ide u ovu promenljivu
 	bytesCnt dword ? ; // koliko bajtova je procitano (broj moze biti promenljiv)
-
 	x0 dword ?
+	x0_cord byte ?
 	y0 dword ?
 	x1 dword ?
 	y1 dword ?
 	color dword ?
-
 	tempByte byte ?
+	
+	; //promenljive koje koristi drawRect
+	outHandle dword ? 
+	cursorInfo CONSOLE_CURSOR_INFO <>
+	buffer byte buffer_size DUP (?) ; //inicijalizujemo buffer da bude 100 promenljivih bajtova
+
 .data
 	infoProgram1 BYTE "Matija Saljic 411/16, Martin Cvijovic 558/17",13,10,0
 	infoProgram2 BYTE "Projekat 31: Parsiranje tekstualnog fajla",13,10,0
@@ -35,11 +40,75 @@
 	infoUnsuccesfulRead BYTE "Greska u citanju linije iz fajla!", 13, 10, 0
 	infoSuccessfulRead BYTE "Uspesno procitana linija iz fajla", 13, 10, 0
 	stringEmptyLine BYTE "    ", 13, 10, 0
+
+
 .code
+
 	drawRect proc
 		; // matija ovde izvodis svoje magije, ako ima nesto ovde onda sam to uneo za debagovanje
 		
+		; //cistimo registre
+		mov eax,0
+		mov ebx,0
+		mov ecx,0
+		mov edx,0
 
+		; //da li brisemo ekran kao pripremu za crtanje
+		; //call Clrscr
+		
+		; //aktiviramo pristup standardnom izlazu tojest konzoli
+		INVOKE GetStdHandle, STD_OUTPUT_HANDLE
+
+		; //uzimamo outHandle koji koristimo za koordinisanje crtanja
+		mov outHandle, 0
+		invoke GetConsoleCursorInfo, outHandle, offset cursorInfo ; // offset umesto addr-a, nisam siguran da li je bezbednije korsititi 
+																  ; // lokalnu adresu umesto globalne
+		mov cursorInfo.bVisible, 0
+		invoke setConsoleCursorInfo, outHandle, offset cursorInfo 
+		
+		; //eksperimentalno
+		
+		; //Moramo da stavljamo koordinate kursora u manje bitove(donjih 16) EDX registra 
+		; //Jer Gotoxy koristi DH i DL deo registra da pozicionira kursor
+		mov dh, byte ptr [y0]				; //u dh stavljamo bajt verziju y0 koordinate
+											; //nju cemo inkrementovati u spoljasnjem loopu
+
+		DrawY:								;iscrtavanje po vertikali
+			
+			mov eax, 0						; //cistimo eax 
+			mov eax, color					; //postavljamo boju trenutnog kvadrata
+			call SetTextColor				; //SetTextColor uzima boju iz eax i pretvara je u jednu od standradnih boja
+
+			mov eax, y1						; //u eax ubacujemo y1
+			sub eax, y0						; //oduzimamo y0
+			add eax, 1						; //dodajemo 1 da bi dobili duzinu stranice, radimo preko y jer x0=x1???
+			mov ecx, eax					; //u brojac duzina stranice po x/y osi
+
+			; mov edx, 0					; //NE cistimo edx JER NAM JE TU Y0 POCETNO
+			mov dl, x0_cord					; //u dl stavljamo bajt verziju x0 koordinate 
+			mov eax, 0DBh					; //simbol koji stampamo
+
+			DrawX:							; //iscrtavamo po x osi ecx puta
+
+				call Gotoxy					; //stavljamo kursor na poziciju odredjenu nizim i visim manjim bitovima EDX registra
+				call WriteChar				; //stampamo blok koji se nalazi u AL
+				inc edx						; //inkrementiramo EDX deo za x poziciju kursora koji ce GotoXY procitati na pocetku DrawX
+				loop DrawX					; //dekrementira ECX i vraca PC na drawX
+				
+			
+			cmp dh, byte ptr [y1]
+			jz KRAJ
+
+			; inc ebx						; //PROBA inkrementiranje ebx odmah nakon cmp i jz instr
+			inc dh							; //inkrementiramo trenutnu poziciju y kursora 
+			jmp DrawY						; //skacemo na pocetak DrawY rutine i 
+											; //crtamo novi red
+
+		; //
+
+		KRAJ: 
+											; // kraj eksperimenta
+											; //kraj procedure
 		ret
 	drawRect endp
 	
@@ -61,7 +130,6 @@
 		mov ecx, BUFFER_SIZE ; 
 		mov edx, offset fileName
 		call ReadString
-
 		mov ecx, 0
 
 		mov edx, offset fileName
@@ -72,6 +140,7 @@
 
 		mov edx, offset infoSuccessfulOpen ; // uspesno ucitavanje
 		call WriteString
+		call clrscr									; //brisemo ekran odmah nakon upisivanja imena
 		
 		mov fileHandle, eax ; // cuvamo filehandle iz eax-a
 
@@ -168,6 +237,7 @@
 		; // do ovde ne treba da se stigne, ecx ce uvek biti u invervalu [0,4]
 	ASSIGNX0:
 		mov x0, eax
+		mov x0_cord, al
 		jmp NEXT
 	ASSIGNY0:
 		mov y0, eax
